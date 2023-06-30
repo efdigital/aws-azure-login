@@ -1,4 +1,6 @@
 .github
+.idea
+*.log
 src
 typings
 .dockerignore

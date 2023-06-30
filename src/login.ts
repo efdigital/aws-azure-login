@@ -475,6 +475,7 @@ export const login = {
     console.log("Using AWS SAML endpoint", assertionConsumerServiceURL);
 
     const loginUrl = await this._createLoginUrlAsync(
+      profile.azure_start_url,
       profile.azure_app_id_uri,
       profile.azure_tenant_id,
       assertionConsumerServiceURL
@@ -556,6 +557,7 @@ export const login = {
   _loadProfileFromEnv(): { [key: string]: string } {
     const env: { [key: string]: string } = {};
     const options = [
+      "azure_start_url",
       "azure_tenant_id",
       "azure_app_id_uri",
       "azure_default_username",
@@ -597,10 +599,14 @@ export const login = {
       }
     }
 
-    if (!profile.azure_tenant_id || !profile.azure_app_id_uri)
+    if (
+      !profile.azure_start_url &&
+      !(profile.azure_tenant_id && profile.azure_app_id_uri)
+    ) {
       throw new CLIError(
-        `Profile '${profileName}' is not configured properly.`
+        `Profile '${profileName}' is not configured properly. You must have azure_start_url or azure_tenant_id/azure_app_id_uri`
       );
+    }
 
     console.log(`Logging in with profile '${profileName}'...`);
     return profile;
@@ -608,17 +614,22 @@ export const login = {
 
   /**
    * Create the Azure login SAML URL.
+   * @param {string | undefined} startUrl - The login start url
    * @param {string} appIdUri - The app ID URI
    * @param {string} tenantId - The Azure tenant ID
    * @param {string} assertionConsumerServiceURL - The AWS SAML endpoint that Azure should send the SAML response to
    * @returns {string} The login URL
    * @private
    */
-  _createLoginUrlAsync(
+  async _createLoginUrlAsync(
+    startUrl: string | undefined,
     appIdUri: string,
     tenantId: string,
     assertionConsumerServiceURL: string
   ): Promise<string> {
+    if (startUrl) {
+      return startUrl;
+    }
     debug("Generating UUID for SAML request");
     const id = v4();
 
@@ -889,10 +900,13 @@ export const login = {
     const saml = cheerio.load(samlText, { xmlMode: true });
 
     debug("Looking for role SAML attribute");
+    const roleAttr = "https://aws.amazon.com/SAML/Attributes/Role";
+    const selectors = [
+      `Attribute[Name='${roleAttr}']>AttributeValue`,
+      `saml2\\:Attribute[Name='${roleAttr}']>saml2\\:AttributeValue`,
+    ];
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const roles: Role[] = saml(
-      "Attribute[Name='https://aws.amazon.com/SAML/Attributes/Role']>AttributeValue"
-    )
+    const roles: Role[] = saml(selectors.join(", "))
       .map(function () {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
