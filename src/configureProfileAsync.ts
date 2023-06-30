@@ -10,15 +10,18 @@ export async function configureProfileAsync(
 
   const questions: Question[] = [
     {
+      name: "startUrl",
+      message: "Start URL:",
+      default: profile && profile.azure_tenant_id,
+    },
+    {
       name: "tenantId",
       message: "Azure Tenant ID:",
-      validate: (input): boolean => !!input,
       default: profile && profile.azure_tenant_id,
     },
     {
       name: "appIdUri",
       message: "Azure App ID URI:",
-      validate: (input): boolean => !!input,
       default: profile && profile.azure_app_id_uri,
     },
     {
@@ -60,6 +63,7 @@ export async function configureProfileAsync(
   const answers = await inquirer.prompt(questions);
 
   await awsConfig.setProfileConfigValuesAsync(profileName, {
+    azure_start_url: answers.startUrl as string,
     azure_tenant_id: answers.tenantId as string,
     azure_app_id_uri: answers.appIdUri as string,
     azure_default_username: answers.username as string,

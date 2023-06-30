@@ -13,6 +13,7 @@ const writeFile = util.promisify(fs.writeFile);
 const refreshLimitInMs = 11 * 60 * 1000;
 
 export interface ProfileConfig {
+  azure_start_url?: string;
   azure_tenant_id: string;
   azure_app_id_uri: string;
   azure_default_username: string;
